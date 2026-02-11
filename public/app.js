@@ -1,3 +1,18 @@
+// ===== FIREBASE CONFIGURATION =====
+const firebaseConfig = {
+    apiKey: "AIzaSyD_PLACEHOLDER_REPLACE_ME",
+    authDomain: "crypto-news-hub.firebaseapp.com",
+    projectId: "crypto-news-hub",
+    storageBucket: "crypto-news-hub.appspot.com",
+    messagingSenderId: "000000000000",
+    appId: "1:000000000000:web:placeholder"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
 // API Configuration
 const API_BASE_URL = window.location.hostname === 'localhost'
     ? 'http://localhost:3000'
@@ -13,14 +28,367 @@ const aiSummaryContent = document.getElementById('aiSummaryContent');
 const closeSummaryBtn = document.getElementById('closeSummaryBtn');
 const summaryTimestamp = document.getElementById('summaryTimestamp');
 
-// Translation state
+// Auth DOM
+const authBtn = document.getElementById('authBtn');
+const authModal = document.getElementById('authModal');
+const closeAuthModal = document.getElementById('closeAuthModal');
+const authForm = document.getElementById('authForm');
+const authEmail = document.getElementById('authEmail');
+const authPassword = document.getElementById('authPassword');
+const authModalTitle = document.getElementById('authModalTitle');
+const authSubmitBtn = document.getElementById('authSubmitBtn');
+const authSwitchBtn = document.getElementById('authSwitchBtn');
+const authSwitchText = document.getElementById('authSwitchText');
+const authError = document.getElementById('authError');
+const googleSignInBtn = document.getElementById('googleSignInBtn');
+const inlineLoginBtn = document.getElementById('inlineLoginBtn');
+
+// Comments DOM
+const commentsContainer = document.getElementById('commentsContainer');
+const commentForm = document.getElementById('commentForm');
+const commentInput = document.getElementById('commentInput');
+const commentAvatar = document.getElementById('commentAvatar');
+const charCount = document.getElementById('charCount');
+const submitCommentBtn = document.getElementById('submitCommentBtn');
+const loginPrompt = document.getElementById('loginPrompt');
+const commentCount = document.getElementById('commentCount');
+
+// YouTube DOM
+const youtubeContainer = document.getElementById('youtubeContainer');
+const refreshVideosBtn = document.getElementById('refreshVideosBtn');
+
+// State
 let isTranslatedMode = false;
 const translationCache = {};
-
-// AI state
 let useModel = null;
 let currentPrices = [];
 let currentNews = [];
+let isLoginMode = true;
+let currentUser = null;
+
+// ===== FIREBASE AUTH =====
+auth.onAuthStateChanged(user => {
+    currentUser = user;
+    updateAuthUI(user);
+});
+
+function updateAuthUI(user) {
+    if (user) {
+        const displayName = user.displayName || user.email.split('@')[0];
+        const initial = displayName.charAt(0).toUpperCase();
+        authBtn.innerHTML = `
+            <div class="user-avatar-small">${initial}</div>
+            ${escapeHtml(displayName)}`;
+        authBtn.classList.add('logged-in');
+        authBtn.onclick = showUserMenu;
+
+        // Show comment form, hide login prompt
+        loginPrompt.classList.add('hidden');
+        commentForm.classList.remove('hidden');
+        commentAvatar.textContent = initial;
+    } else {
+        authBtn.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+            </svg>
+            로그인`;
+        authBtn.classList.remove('logged-in');
+        authBtn.onclick = () => openAuthModal(true);
+
+        loginPrompt.classList.remove('hidden');
+        commentForm.classList.add('hidden');
+    }
+}
+
+function openAuthModal(login = true) {
+    isLoginMode = login;
+    authModal.classList.remove('hidden');
+    authError.classList.add('hidden');
+    authForm.reset();
+
+    if (login) {
+        authModalTitle.textContent = '로그인';
+        authSubmitBtn.textContent = '로그인';
+        authSwitchText.textContent = '계정이 없으신가요?';
+        authSwitchBtn.textContent = '회원가입';
+    } else {
+        authModalTitle.textContent = '회원가입';
+        authSubmitBtn.textContent = '가입하기';
+        authSwitchText.textContent = '이미 계정이 있으신가요?';
+        authSwitchBtn.textContent = '로그인';
+    }
+}
+
+function closeModal() {
+    authModal.classList.add('hidden');
+}
+
+function showAuthError(message) {
+    authError.textContent = message;
+    authError.classList.remove('hidden');
+}
+
+function showUserMenu() {
+    if (!currentUser) return;
+    const confirmed = confirm(`${currentUser.email}\n\n로그아웃 하시겠습니까?`);
+    if (confirmed) {
+        auth.signOut();
+    }
+}
+
+// Auth Event Listeners
+closeAuthModal.addEventListener('click', closeModal);
+authModal.addEventListener('click', (e) => {
+    if (e.target === authModal) closeModal();
+});
+
+authSwitchBtn.addEventListener('click', () => {
+    openAuthModal(!isLoginMode);
+});
+
+authForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    authError.classList.add('hidden');
+    authSubmitBtn.disabled = true;
+    authSubmitBtn.textContent = '처리 중...';
+
+    const email = authEmail.value.trim();
+    const password = authPassword.value;
+
+    try {
+        if (isLoginMode) {
+            await auth.signInWithEmailAndPassword(email, password);
+        } else {
+            const cred = await auth.createUserWithEmailAndPassword(email, password);
+            await cred.user.updateProfile({ displayName: email.split('@')[0] });
+        }
+        closeModal();
+    } catch (error) {
+        const messages = {
+            'auth/email-already-in-use': '이미 사용 중인 이메일입니다.',
+            'auth/invalid-email': '유효하지 않은 이메일 형식입니다.',
+            'auth/weak-password': '비밀번호는 6자 이상이어야 합니다.',
+            'auth/user-not-found': '등록되지 않은 이메일입니다.',
+            'auth/wrong-password': '비밀번호가 올바르지 않습니다.',
+            'auth/invalid-credential': '이메일 또는 비밀번호가 올바르지 않습니다.',
+            'auth/too-many-requests': '너무 많은 시도입니다. 잠시 후 다시 시도하세요.',
+            'auth/api-key-not-valid.-please-pass-a-valid-api-key.': '⚠️ Firebase API 키가 설정되지 않았습니다. .env 파일에서 Firebase 설정을 확인하세요.'
+        };
+        showAuthError(messages[error.code] || error.message);
+    }
+
+    authSubmitBtn.disabled = false;
+    authSubmitBtn.textContent = isLoginMode ? '로그인' : '가입하기';
+});
+
+googleSignInBtn.addEventListener('click', async () => {
+    try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        await auth.signInWithPopup(provider);
+        closeModal();
+    } catch (error) {
+        if (error.code === 'auth/popup-closed-by-user') return;
+        showAuthError(error.message);
+    }
+});
+
+authBtn.addEventListener('click', () => {
+    if (!currentUser) openAuthModal(true);
+});
+
+inlineLoginBtn?.addEventListener('click', () => openAuthModal(true));
+
+// ===== COMMUNITY COMMENTS (Firestore) =====
+const COMMENTS_COLLECTION = 'crypto_comments';
+
+async function loadComments() {
+    try {
+        const snapshot = await db.collection(COMMENTS_COLLECTION)
+            .orderBy('createdAt', 'desc')
+            .limit(20)
+            .get();
+
+        const comments = [];
+        snapshot.forEach(doc => {
+            comments.push({ id: doc.id, ...doc.data() });
+        });
+
+        commentCount.textContent = `${comments.length}개의 댓글`;
+        renderComments(comments);
+    } catch (error) {
+        console.error('Comments load error:', error);
+        commentsContainer.innerHTML = `
+            <div class="comments-empty">
+                <p>💬 첫 번째 댓글을 남겨보세요!</p>
+                <p class="text-muted">Firebase 연결 후 커뮤니티 기능이 활성화됩니다.</p>
+            </div>`;
+        commentCount.textContent = '0개의 댓글';
+    }
+}
+
+function renderComments(comments) {
+    if (comments.length === 0) {
+        commentsContainer.innerHTML = `
+            <div class="comments-empty">
+                <p>💬 아직 댓글이 없습니다</p>
+                <p class="text-muted">첫 번째 댓글을 남겨보세요!</p>
+            </div>`;
+        return;
+    }
+
+    commentsContainer.innerHTML = comments.map(c => {
+        const initial = (c.authorName || '?').charAt(0).toUpperCase();
+        const date = c.createdAt?.toDate ? c.createdAt.toDate() : new Date();
+        const timeAgo = formatDate(date);
+        const isOwn = currentUser && currentUser.uid === c.authorId;
+
+        return `
+            <div class="comment-item ${isOwn ? 'own' : ''}">
+                <div class="comment-avatar-wrapper">
+                    <div class="comment-avatar-icon">${initial}</div>
+                </div>
+                <div class="comment-body">
+                    <div class="comment-meta">
+                        <span class="comment-author">${escapeHtml(c.authorName || '익명')}</span>
+                        <span class="comment-time">${timeAgo}</span>
+                    </div>
+                    <p class="comment-text">${escapeHtml(c.text)}</p>
+                    ${isOwn ? `<button class="btn-delete-comment" onclick="deleteComment('${c.id}')">삭제</button>` : ''}
+                </div>
+            </div>`;
+    }).join('');
+}
+
+async function submitComment(e) {
+    e.preventDefault();
+    if (!currentUser) return openAuthModal(true);
+
+    const text = commentInput.value.trim();
+    if (!text) return;
+
+    submitCommentBtn.disabled = true;
+    submitCommentBtn.textContent = '게시 중...';
+
+    try {
+        await db.collection(COMMENTS_COLLECTION).add({
+            text: text,
+            authorId: currentUser.uid,
+            authorName: currentUser.displayName || currentUser.email.split('@')[0],
+            authorEmail: currentUser.email,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        commentInput.value = '';
+        charCount.textContent = '0/500';
+        await loadComments();
+    } catch (error) {
+        console.error('Comment submit error:', error);
+        alert('댓글 작성에 실패했습니다.');
+    }
+
+    submitCommentBtn.disabled = false;
+    submitCommentBtn.textContent = '💬 댓글 작성';
+}
+
+async function deleteComment(commentId) {
+    if (!confirm('댓글을 삭제하시겠습니까?')) return;
+    try {
+        await db.collection(COMMENTS_COLLECTION).doc(commentId).delete();
+        await loadComments();
+    } catch (error) {
+        console.error('Delete error:', error);
+    }
+}
+
+commentForm.addEventListener('submit', submitComment);
+commentInput.addEventListener('input', () => {
+    charCount.textContent = `${commentInput.value.length}/500`;
+});
+
+// ===== YOUTUBE CRYPTO VIDEOS =====
+const YOUTUBE_SEARCH_QUERIES = [
+    'bitcoin analysis today',
+    'cryptocurrency market update',
+    'crypto trading strategy',
+    'ethereum news today',
+    'bitcoin price prediction'
+];
+
+// Curated list of crypto YouTube channels/videos (no API key needed)
+const CRYPTO_VIDEOS = [
+    { id: 'Lhf_2gJJS1I', title: 'Bitcoin 최신 시장 분석', channel: 'CoinDesk' },
+    { id: 'rYQgy8QDEBI', title: '암호화폐 시장 동향', channel: 'Coin Bureau' },
+    { id: 'GIlEOrQlZOk', title: 'BTC 기술적 분석', channel: 'DataDash' },
+    { id: 'Yb6825iv0Vk', title: '이더리움 업데이트', channel: 'Bankless' },
+    { id: 'mQke4waGbDA', title: '코인 시장 전망', channel: 'Ben Cowen' },
+    { id: '41JCpzvnn_0', title: '크립토 뉴스 브리핑', channel: 'CryptosRUs' }
+];
+
+let ytPlayers = {};
+
+function onYouTubeIframeAPIReady() {
+    console.log('YouTube IFrame API ready');
+}
+
+function renderYouTubeVideos() {
+    // Shuffle and pick 4 videos
+    const shuffled = [...CRYPTO_VIDEOS].sort(() => Math.random() - 0.5).slice(0, 4);
+
+    youtubeContainer.innerHTML = shuffled.map((video, idx) => `
+        <div class="youtube-card">
+            <div class="youtube-thumb" id="ytPlayer${idx}" data-video-id="${video.id}">
+                <img src="https://img.youtube.com/vi/${video.id}/mqdefault.jpg"
+                     alt="${escapeHtml(video.title)}"
+                     class="youtube-thumbnail"
+                     onerror="this.src='https://placehold.co/320x180/1a1f3f/f7931a?text=Video'">
+                <div class="youtube-play-btn" onclick="playVideo('${video.id}', 'ytPlayer${idx}')">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="white">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="youtube-info">
+                <h3 class="youtube-title">${escapeHtml(video.title)}</h3>
+                <span class="youtube-channel">${escapeHtml(video.channel)}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function playVideo(videoId, containerId) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    container.classList.add('playing');
+
+    if (typeof YT !== 'undefined' && YT.Player) {
+        ytPlayers[containerId] = new YT.Player(containerId, {
+            height: '100%',
+            width: '100%',
+            videoId: videoId,
+            playerVars: {
+                autoplay: 1,
+                modestbranding: 1,
+                rel: 0
+            }
+        });
+    } else {
+        // Fallback to iframe
+        container.innerHTML = `
+            <iframe width="100%" height="100%"
+                src="https://www.youtube.com/embed/${videoId}?autoplay=1&modestbranding=1&rel=0"
+                frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+    }
+}
+
+refreshVideosBtn.addEventListener('click', () => {
+    // Destroy existing players
+    Object.values(ytPlayers).forEach(p => {
+        if (p && p.destroy) p.destroy();
+    });
+    ytPlayers = {};
+    renderYouTubeVideos();
+});
 
 // ===== AI MARKET ANALYSIS (TensorFlow.js + USE) =====
 async function loadUSEModel() {
@@ -609,6 +977,8 @@ closeSummaryBtn.addEventListener('click', () => {
 // ===== INITIAL LOAD =====
 fetchPrices();
 fetchNews();
+renderYouTubeVideos();
+loadComments();
 
 // Auto-refresh prices every 10 seconds
 setInterval(fetchPrices, 10 * 1000);
