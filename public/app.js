@@ -10,9 +10,19 @@ const refreshBtn = document.getElementById('refreshBtn');
 // ===== PRICE TICKER =====
 async function fetchPrices() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/prices`);
-        if (!response.ok) throw new Error('Failed to fetch prices');
-        const prices = await response.json();
+        const symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT'];
+        const promises = symbols.map(symbol =>
+            fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`).then(r => r.json())
+        );
+        const results = await Promise.all(promises);
+        const prices = results.map(data => ({
+            symbol: data.symbol,
+            price: parseFloat(data.lastPrice),
+            change: parseFloat(data.priceChangePercent),
+            high: parseFloat(data.highPrice),
+            low: parseFloat(data.lowPrice),
+            volume: parseFloat(data.volume)
+        }));
         displayPrices(prices);
     } catch (error) {
         console.error('Price fetch error:', error);
