@@ -7,7 +7,55 @@ const API_BASE_URL = window.location.hostname === 'localhost'
 const newsContainer = document.getElementById('newsContainer');
 const refreshBtn = document.getElementById('refreshBtn');
 
-// Fetch and display news
+// ===== PRICE TICKER =====
+async function fetchPrices() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/prices`);
+        if (!response.ok) throw new Error('Failed to fetch prices');
+        const prices = await response.json();
+        displayPrices(prices);
+    } catch (error) {
+        console.error('Price fetch error:', error);
+    }
+}
+
+function displayPrices(prices) {
+    const symbolNames = {
+        'BTCUSDT': 'BTC',
+        'ETHUSDT': 'ETH',
+        'BNBUSDT': 'BNB',
+        'SOLUSDT': 'SOL',
+        'XRPUSDT': 'XRP'
+    };
+
+    prices.forEach(coin => {
+        const card = document.getElementById(`price-${coin.symbol}`);
+        if (!card) return;
+
+        card.classList.remove('loading-shimmer');
+
+        const valueEl = card.querySelector('.price-value');
+        const changeEl = card.querySelector('.price-change');
+
+        const formattedPrice = coin.price >= 1
+            ? `$${coin.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : `$${coin.price.toFixed(4)}`;
+
+        const isUp = coin.change >= 0;
+        const arrow = isUp ? '▲' : '▼';
+
+        valueEl.textContent = formattedPrice;
+        changeEl.textContent = `${arrow} ${Math.abs(coin.change).toFixed(2)}%`;
+        changeEl.className = `price-change ${isUp ? 'up' : 'down'}`;
+
+        // Flash animation on update
+        valueEl.classList.remove('price-flash');
+        void valueEl.offsetWidth; // trigger reflow
+        valueEl.classList.add('price-flash');
+    });
+}
+
+// ===== NEWS =====
 async function fetchNews() {
     try {
         showLoading();
@@ -32,7 +80,6 @@ async function fetchNews() {
     }
 }
 
-// Display news cards
 function displayNews(newsArray) {
     newsContainer.innerHTML = '';
 
@@ -42,7 +89,6 @@ function displayNews(newsArray) {
     });
 }
 
-// Create a news card element
 function createNewsCard(article, index) {
     const card = document.createElement('article');
     card.className = 'news-card';
@@ -53,7 +99,7 @@ function createNewsCard(article, index) {
     const formattedDate = formatDate(date);
 
     card.innerHTML = `
-        <img src="${imageUrl}" alt="${escapeHtml(article.headline)}" class="news-image" 
+        <img src="${imageUrl}" alt="${escapeHtml(article.headline)}" class="news-image"
              onerror="this.src='https://via.placeholder.com/400x200/1a1f3f/f7931a?text=Crypto+News'">
         <div class="news-content">
             <span class="news-source">${escapeHtml(article.source)}</span>
@@ -77,7 +123,6 @@ function createNewsCard(article, index) {
     return card;
 }
 
-// Show loading state
 function showLoading() {
     newsContainer.innerHTML = `
         <div class="loading">
@@ -87,7 +132,6 @@ function showLoading() {
     `;
 }
 
-// Show error message
 function showError(message) {
     newsContainer.innerHTML = `
         <div class="error">
@@ -97,7 +141,6 @@ function showError(message) {
     `;
 }
 
-// Format date to Korean format
 function formatDate(date) {
     const now = new Date();
     const diffMs = now - date;
@@ -119,23 +162,27 @@ function formatDate(date) {
     });
 }
 
-// Escape HTML to prevent XSS
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
-// Event Listeners
+// ===== EVENT LISTENERS =====
 refreshBtn.addEventListener('click', () => {
     refreshBtn.classList.add('spinning');
-    fetchNews().finally(() => {
+    Promise.all([fetchNews(), fetchPrices()]).finally(() => {
         setTimeout(() => refreshBtn.classList.remove('spinning'), 500);
     });
 });
 
-// Initial load
+// ===== INITIAL LOAD =====
+fetchPrices();
 fetchNews();
 
-// Auto-refresh every 5 minutes
+// Auto-refresh prices every 10 seconds
+setInterval(fetchPrices, 10 * 1000);
+
+// Auto-refresh news every 5 minutes
 setInterval(fetchNews, 5 * 60 * 1000);
+

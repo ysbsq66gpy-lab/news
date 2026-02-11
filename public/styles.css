@@ -62,8 +62,15 @@ body {
 }
 
 @keyframes gradient {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
+
+    0%,
+    100% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
 }
 
 .header-content {
@@ -88,8 +95,17 @@ body {
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.8; transform: scale(1.05); }
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
 }
 
 h1 {
@@ -148,6 +164,115 @@ h1 {
     margin-bottom: 3rem;
 }
 
+/* Price Ticker */
+.price-ticker {
+    margin-bottom: 2rem;
+    overflow: hidden;
+}
+
+.price-ticker-inner {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    padding: 0.5rem 0;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.price-ticker-inner::-webkit-scrollbar {
+    display: none;
+}
+
+.price-card {
+    flex: 1;
+    min-width: 160px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 1rem 1.25rem;
+    background: var(--bg-card);
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.price-card:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(247, 147, 26, 0.15);
+}
+
+.price-symbol {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    letter-spacing: 1px;
+}
+
+.price-value {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.price-change {
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: 6px;
+}
+
+.price-change.up {
+    color: #48bb78;
+    background: rgba(72, 187, 120, 0.12);
+}
+
+.price-change.down {
+    color: #fc8181;
+    background: rgba(252, 129, 129, 0.12);
+}
+
+.loading-shimmer {
+    position: relative;
+    overflow: hidden;
+}
+
+.loading-shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.04), transparent);
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    to {
+        left: 100%;
+    }
+}
+
+.price-flash {
+    animation: priceFlash 0.4s ease;
+}
+
+@keyframes priceFlash {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.08);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
 /* Loading State */
 .loading {
     grid-column: 1 / -1;
@@ -169,7 +294,9 @@ h1 {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* News Card */
@@ -351,6 +478,7 @@ h1 {
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -361,9 +489,26 @@ h1 {
     animation: fadeIn 0.5s ease forwards;
 }
 
-.news-card:nth-child(1) { animation-delay: 0.1s; }
-.news-card:nth-child(2) { animation-delay: 0.2s; }
-.news-card:nth-child(3) { animation-delay: 0.3s; }
-.news-card:nth-child(4) { animation-delay: 0.4s; }
-.news-card:nth-child(5) { animation-delay: 0.5s; }
-.news-card:nth-child(6) { animation-delay: 0.6s; }
+.news-card:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.news-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.news-card:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.news-card:nth-child(4) {
+    animation-delay: 0.4s;
+}
+
+.news-card:nth-child(5) {
+    animation-delay: 0.5s;
+}
+
+.news-card:nth-child(6) {
+    animation-delay: 0.6s;
+}

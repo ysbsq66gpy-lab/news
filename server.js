@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const fetch = require('node-fetch');
+const axios = require('axios');
 const path = require('path');
 const cors = require('cors');
 
@@ -11,6 +12,29 @@ const API_KEY = process.env.FINNHUB_API_KEY;
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+
+// API endpoint to fetch crypto prices from Binance
+app.get('/api/prices', async (req, res) => {
+    try {
+        const symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT'];
+        const promises = symbols.map(symbol =>
+            axios.get(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`)
+        );
+        const responses = await Promise.all(promises);
+        const prices = responses.map(r => ({
+            symbol: r.data.symbol,
+            price: parseFloat(r.data.lastPrice),
+            change: parseFloat(r.data.priceChangePercent),
+            high: parseFloat(r.data.highPrice),
+            low: parseFloat(r.data.lowPrice),
+            volume: parseFloat(r.data.volume)
+        }));
+        res.json(prices);
+    } catch (error) {
+        console.error('Error fetching prices:', error.message);
+        res.status(500).json({ error: 'Failed to fetch prices', message: error.message });
+    }
+});
 
 // API endpoint to fetch crypto news
 app.get('/api/news', async (req, res) => {
