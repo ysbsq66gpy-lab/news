@@ -6,6 +6,126 @@ const API_BASE_URL = window.location.hostname === 'localhost'
 // DOM Elements
 const newsContainer = document.getElementById('newsContainer');
 const refreshBtn = document.getElementById('refreshBtn');
+const translateAllBtn = document.getElementById('translateAllBtn');
+
+// Translation state
+let isTranslatedMode = false;
+const translationCache = {};
+
+// ===== TRANSLATION =====
+async function translateText(text, sourceLang = 'en', targetLang = 'ko') {
+    const cacheKey = `${text}_${sourceLang}_${targetLang}`;
+    if (translationCache[cacheKey]) return translationCache[cacheKey];
+
+    try {
+        const encoded = encodeURIComponent(text.substring(0, 500));
+        const response = await fetch(
+            `https://api.mymemory.translated.net/get?q=${encoded}&langpair=${sourceLang}|${targetLang}`
+        );
+        const data = await response.json();
+
+        if (data.responseStatus === 200 && data.responseData.translatedText) {
+            const translated = data.responseData.translatedText;
+            translationCache[cacheKey] = translated;
+            return translated;
+        }
+        return null;
+    } catch (error) {
+        console.error('Translation error:', error);
+        return null;
+    }
+}
+
+async function translateCard(cardEl) {
+    const titleEl = cardEl.querySelector('.news-title a');
+    const summaryEl = cardEl.querySelector('.news-summary');
+    const btn = cardEl.querySelector('.btn-card-translate');
+
+    if (cardEl.querySelector('.translated-text')) {
+        cardEl.querySelectorAll('.translated-text').forEach(el => el.remove());
+        if (btn) {
+            btn.textContent = '🌐 번역';
+            btn.classList.remove('translated');
+        }
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '번역 중...';
+    }
+
+    const titleText = titleEl?.textContent?.trim();
+    const summaryText = summaryEl?.textContent?.trim();
+
+    const [translatedTitle, translatedSummary] = await Promise.all([
+        titleText ? translateText(titleText) : null,
+        summaryText ? translateText(summaryText) : null
+    ]);
+
+    if (translatedTitle || translatedSummary) {
+        const translatedDiv = document.createElement('div');
+        translatedDiv.className = 'translated-text';
+        let html = '';
+        if (translatedTitle) html += `<div class="translated-title">📌 ${escapeHtml(translatedTitle)}</div>`;
+        if (translatedSummary) html += `<div>${escapeHtml(translatedSummary)}</div>`;
+        translatedDiv.innerHTML = html;
+
+        summaryEl.insertAdjacentElement('afterend', translatedDiv);
+
+        if (btn) {
+            btn.textContent = '✓ 번역됨';
+            btn.classList.add('translated');
+        }
+    } else {
+        if (btn) btn.textContent = '⚠️ 실패';
+    }
+
+    if (btn) btn.disabled = false;
+}
+
+async function translateAllCards() {
+    translateAllBtn.disabled = true;
+
+    if (isTranslatedMode) {
+        // Remove all translations
+        document.querySelectorAll('.translated-text').forEach(el => el.remove());
+        document.querySelectorAll('.btn-card-translate').forEach(btn => {
+            btn.textContent = '🌐 번역';
+            btn.classList.remove('translated');
+        });
+        translateAllBtn.textContent = '한국어 번역';
+        translateAllBtn.classList.remove('active');
+        isTranslatedMode = false;
+        translateAllBtn.disabled = false;
+        return;
+    }
+
+    translateAllBtn.textContent = '번역 중...';
+
+    const cards = document.querySelectorAll('.news-card');
+    // Translate in batches of 3 to avoid rate limiting
+    for (let i = 0; i < cards.length; i += 3) {
+        const batch = Array.from(cards).slice(i, i + 3);
+        await Promise.all(batch.map(card => {
+            if (!card.querySelector('.translated-text')) {
+                return translateCard(card);
+            }
+            return Promise.resolve();
+        }));
+        // Small delay between batches
+        if (i + 3 < cards.length) await new Promise(r => setTimeout(r, 300));
+    }
+
+    translateAllBtn.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/>
+        </svg>
+        원문 보기`;
+    translateAllBtn.classList.add('active');
+    isTranslatedMode = true;
+    translateAllBtn.disabled = false;
+}
 
 // ===== PRICE TICKER =====
 async function fetchPrices() {
@@ -69,6 +189,13 @@ function displayPrices(prices) {
 async function fetchNews() {
     try {
         showLoading();
+        isTranslatedMode = false;
+        translateAllBtn.classList.remove('active');
+        translateAllBtn.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/>
+            </svg>
+            한국어 번역`;
 
         const response = await fetch(`${API_BASE_URL}/api/news`);
 
@@ -112,7 +239,10 @@ function createNewsCard(article, index) {
         <img src="${imageUrl}" alt="${escapeHtml(article.headline)}" class="news-image"
              onerror="this.src='https://via.placeholder.com/400x200/1a1f3f/f7931a?text=Crypto+News'">
         <div class="news-content">
-            <span class="news-source">${escapeHtml(article.source)}</span>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                <span class="news-source">${escapeHtml(article.source)}</span>
+                <button class="btn-card-translate" onclick="translateCard(this.closest('.news-card'))">🌐 번역</button>
+            </div>
             <h2 class="news-title">
                 <a href="${article.url}" target="_blank" rel="noopener noreferrer">
                     ${escapeHtml(article.headline)}
@@ -185,6 +315,8 @@ refreshBtn.addEventListener('click', () => {
         setTimeout(() => refreshBtn.classList.remove('spinning'), 500);
     });
 });
+
+translateAllBtn.addEventListener('click', translateAllCards);
 
 // ===== INITIAL LOAD =====
 fetchPrices();

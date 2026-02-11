@@ -123,6 +123,49 @@ h1 {
     font-weight: 400;
 }
 
+.header-buttons {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-translate {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, var(--secondary-color), #357abd);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-md);
+}
+
+.btn-translate:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 40px rgba(74, 144, 226, 0.3);
+}
+
+.btn-translate:active {
+    transform: translateY(0);
+}
+
+.btn-translate.active {
+    background: linear-gradient(135deg, #48bb78, #38a169);
+    box-shadow: 0 0 40px rgba(72, 187, 120, 0.3);
+}
+
+.btn-translate:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
 .btn-refresh {
     display: inline-flex;
     align-items: center;
@@ -154,6 +197,57 @@ h1 {
 
 .btn-refresh:hover svg {
     transform: rotate(180deg);
+}
+
+/* Card Translate Button */
+.btn-card-translate {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.65rem;
+    background: rgba(74, 144, 226, 0.15);
+    color: var(--secondary-color);
+    border: 1px solid rgba(74, 144, 226, 0.3);
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-card-translate:hover {
+    background: rgba(74, 144, 226, 0.25);
+    border-color: var(--secondary-color);
+}
+
+.btn-card-translate.translated {
+    background: rgba(72, 187, 120, 0.15);
+    color: var(--success);
+    border-color: rgba(72, 187, 120, 0.3);
+}
+
+.btn-card-translate:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Translated Text */
+.translated-text {
+    margin-top: 0.5rem;
+    padding: 0.75rem;
+    background: rgba(74, 144, 226, 0.08);
+    border-left: 3px solid var(--secondary-color);
+    border-radius: 0 8px 8px 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    animation: fadeIn 0.3s ease;
+}
+
+.translated-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.4rem;
 }
 
 /* News Grid */
