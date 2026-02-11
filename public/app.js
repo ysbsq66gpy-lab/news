@@ -7,10 +7,152 @@ const API_BASE_URL = window.location.hostname === 'localhost'
 const newsContainer = document.getElementById('newsContainer');
 const refreshBtn = document.getElementById('refreshBtn');
 const translateAllBtn = document.getElementById('translateAllBtn');
+const aiAnalyzeBtn = document.getElementById('aiAnalyzeBtn');
 
 // Translation state
 let isTranslatedMode = false;
 const translationCache = {};
+
+// AI state
+let aiModel = null;
+let isAiMode = false;
+const aiCache = {};
+
+// ===== AI IMAGE ANALYSIS =====
+async function loadAiModel() {
+    if (aiModel) return aiModel;
+    console.log('Loading MobileNet model...');
+    aiModel = await mobilenet.load({ version: 2, alpha: 1.0 });
+    console.log('MobileNet model loaded!');
+    return aiModel;
+}
+
+async function analyzeCardImage(cardEl) {
+    const imgEl = cardEl.querySelector('.news-image');
+    const btn = cardEl.querySelector('.btn-card-ai');
+    const wrapper = cardEl.querySelector('.news-image-wrapper');
+
+    if (!imgEl || !wrapper) return;
+
+    // Toggle off if already analyzed
+    const existingOverlay = wrapper.querySelector('.ai-tags-overlay');
+    if (existingOverlay) {
+        existingOverlay.remove();
+        if (btn) {
+            btn.textContent = '🤖 AI';
+            btn.classList.remove('analyzed');
+        }
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '분석 중...';
+    }
+    wrapper.classList.add('ai-analyzing');
+
+    try {
+        const model = await loadAiModel();
+
+        // Create a separate image for classification (to handle CORS)
+        const classifyImg = new Image();
+        classifyImg.crossOrigin = 'anonymous';
+
+        const imgSrc = imgEl.src;
+        const cacheKey = imgSrc;
+
+        let predictions;
+        if (aiCache[cacheKey]) {
+            predictions = aiCache[cacheKey];
+        } else {
+            predictions = await new Promise((resolve, reject) => {
+                classifyImg.onload = async () => {
+                    try {
+                        const result = await model.classify(classifyImg, 3);
+                        resolve(result);
+                    } catch (e) {
+                        reject(e);
+                    }
+                };
+                classifyImg.onerror = () => {
+                    // If CORS fails, try classifying the original image directly
+                    model.classify(imgEl, 3).then(resolve).catch(reject);
+                };
+                classifyImg.src = imgSrc;
+            });
+            aiCache[cacheKey] = predictions;
+        }
+
+        // Display tags overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'ai-tags-overlay';
+        predictions.forEach((pred, i) => {
+            const tag = document.createElement('span');
+            const className = pred.className.split(',')[0].trim();
+            const conf = (pred.probability * 100).toFixed(1);
+            tag.className = `ai-tag ${i === 0 ? 'primary' : 'secondary'}`;
+            tag.innerHTML = `${className} <span class="ai-tag-conf">${conf}%</span>`;
+            overlay.appendChild(tag);
+        });
+        wrapper.appendChild(overlay);
+
+        if (btn) {
+            btn.textContent = '✓ 분석됨';
+            btn.classList.add('analyzed');
+        }
+    } catch (error) {
+        console.error('AI analysis error:', error);
+        if (btn) btn.textContent = '⚠️ 실패';
+    }
+
+    wrapper.classList.remove('ai-analyzing');
+    if (btn) btn.disabled = false;
+}
+
+async function analyzeAllImages() {
+    aiAnalyzeBtn.disabled = true;
+
+    if (isAiMode) {
+        // Remove all AI overlays
+        document.querySelectorAll('.ai-tags-overlay').forEach(el => el.remove());
+        document.querySelectorAll('.btn-card-ai').forEach(btn => {
+            btn.textContent = '🤖 AI';
+            btn.classList.remove('analyzed');
+        });
+        aiAnalyzeBtn.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+            </svg>
+            AI 이미지 분석`;
+        aiAnalyzeBtn.classList.remove('active');
+        isAiMode = false;
+        aiAnalyzeBtn.disabled = false;
+        return;
+    }
+
+    aiAnalyzeBtn.textContent = '🧠 모델 로딩 중...';
+    await loadAiModel();
+    aiAnalyzeBtn.textContent = '🔍 분석 중...';
+
+    const cards = document.querySelectorAll('.news-card');
+    for (let i = 0; i < cards.length; i++) {
+        const card = cards[i];
+        if (!card.querySelector('.ai-tags-overlay')) {
+            await analyzeCardImage(card);
+        }
+    }
+
+    aiAnalyzeBtn.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+        AI 태그 숨기기`;
+    aiAnalyzeBtn.classList.add('active');
+    isAiMode = true;
+    aiAnalyzeBtn.disabled = false;
+}
 
 // ===== TRANSLATION =====
 async function translateText(text, sourceLang = 'en', targetLang = 'ko') {
@@ -236,12 +378,17 @@ function createNewsCard(article, index) {
     const formattedDate = formatDate(date);
 
     card.innerHTML = `
-        <img src="${imageUrl}" alt="${escapeHtml(article.headline)}" class="news-image"
-             onerror="this.src='https://via.placeholder.com/400x200/1a1f3f/f7931a?text=Crypto+News'">
+        <div class="news-image-wrapper">
+            <img src="${imageUrl}" alt="${escapeHtml(article.headline)}" class="news-image" crossorigin="anonymous"
+                 onerror="this.src='https://via.placeholder.com/400x200/1a1f3f/f7931a?text=Crypto+News'">
+        </div>
         <div class="news-content">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; gap:0.4rem;">
                 <span class="news-source">${escapeHtml(article.source)}</span>
-                <button class="btn-card-translate" onclick="translateCard(this.closest('.news-card'))">🌐 번역</button>
+                <div style="display:flex; gap:0.35rem;">
+                    <button class="btn-card-ai" onclick="analyzeCardImage(this.closest('.news-card'))">🤖 AI</button>
+                    <button class="btn-card-translate" onclick="translateCard(this.closest('.news-card'))">🌐 번역</button>
+                </div>
             </div>
             <h2 class="news-title">
                 <a href="${article.url}" target="_blank" rel="noopener noreferrer">
@@ -317,6 +464,7 @@ refreshBtn.addEventListener('click', () => {
 });
 
 translateAllBtn.addEventListener('click', translateAllCards);
+aiAnalyzeBtn.addEventListener('click', analyzeAllImages);
 
 // ===== INITIAL LOAD =====
 fetchPrices();
@@ -327,4 +475,3 @@ setInterval(fetchPrices, 10 * 1000);
 
 // Auto-refresh news every 5 minutes
 setInterval(fetchNews, 5 * 60 * 1000);
-

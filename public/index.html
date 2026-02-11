@@ -24,6 +24,14 @@
                 <p class="tagline">실시간 암호화폐 시장 뉴스</p>
             </div>
             <div class="header-buttons">
+                <button id="aiAnalyzeBtn" class="btn-ai">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                    </svg>
+                    AI 이미지 분석
+                </button>
                 <button id="translateAllBtn" class="btn-translate">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6" />
@@ -77,11 +85,15 @@
         </main>
 
         <footer class="footer">
-            <p>Powered by <a href="https://finnhub.io" target="_blank" rel="noopener">Finnhub</a> API</p>
+            <p>Powered by <a href="https://finnhub.io" target="_blank" rel="noopener">Finnhub</a> &middot; <a
+                    href="https://www.binance.com" target="_blank" rel="noopener">Binance</a> &middot; <a
+                    href="https://www.tensorflow.org/js" target="_blank" rel="noopener">TensorFlow.js</a></p>
             <p class="footer-note">실시간 데이터로 업데이트됩니다</p>
         </footer>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.4.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
     <script src="app.js"></script>
 </body>
 
