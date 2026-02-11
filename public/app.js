@@ -288,34 +288,23 @@ async function fetchNewsData() {
 }
 
 // ===== TRANSLATION =====
-async function translateText(text, sourceLang = 'en', targetLang = 'ko', retryCount = 0) {
+async function translateText(text, sourceLang = 'en', targetLang = 'ko') {
     const cacheKey = `${text}_${sourceLang}_${targetLang}`;
     if (translationCache[cacheKey]) return translationCache[cacheKey];
 
     try {
-        const encoded = encodeURIComponent(text.substring(0, 500));
-        // Added de_email to increase rate limits as per MyMemory docs
-        const url = `https://api.mymemory.translated.net/get?q=${encoded}&langpair=${sourceLang}|${targetLang}&de=jihun@example.com`;
+        const encoded = encodeURIComponent(text);
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encoded}`;
         const response = await fetch(url);
 
-        if (response.status === 429 && retryCount < 3) {
-            const delay = 3000 + (retryCount * 2000);
-            console.warn(`Translation rate limited (429). Retrying in ${delay / 1000} seconds... (Attempt ${retryCount + 1})`);
-            await new Promise(r => setTimeout(r, delay));
-            return translateText(text, sourceLang, targetLang, retryCount + 1);
-        }
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
         const data = await response.json();
 
-        if (data.responseStatus === 200 && data.responseData.translatedText) {
-            const translated = data.responseData.translatedText;
+        if (data && data[0]) {
+            const translated = data[0].map(item => item[0]).join('');
             translationCache[cacheKey] = translated;
             return translated;
-        } else if (data.responseStatus === 429 && retryCount < 3) {
-            // Some responses return 429 in the JSON body instead of HTTP status
-            const delay = 3000 + (retryCount * 2000);
-            await new Promise(r => setTimeout(r, delay));
-            return translateText(text, sourceLang, targetLang, retryCount + 1);
         }
         return null;
     } catch (error) {
@@ -391,14 +380,16 @@ async function translateAllCards() {
     translateAllBtn.textContent = '번역 중...';
 
     const cards = document.querySelectorAll('.news-card');
-    // Translate one by one with a significant delay to avoid 429
-    for (let i = 0; i < cards.length; i++) {
-        const card = cards[i];
-        if (!card.querySelector('.translated-text')) {
-            await translateCard(card);
-            // Wait 1.5 seconds between each card (2 requests: title + summary)
-            if (i < cards.length - 1) await new Promise(r => setTimeout(r, 1500));
-        }
+    // Batched translation for efficiency
+    for (let i = 0; i < cards.length; i += 3) {
+        const batch = Array.from(cards).slice(i, i + 3);
+        await Promise.all(batch.map(card => {
+            if (!card.querySelector('.translated-text')) {
+                return translateCard(card);
+            }
+            return Promise.resolve();
+        }));
+        if (i + 3 < cards.length) await new Promise(r => setTimeout(r, 400));
     }
 
     translateAllBtn.innerHTML = `
