@@ -288,15 +288,21 @@ async function fetchNewsData() {
 }
 
 // ===== TRANSLATION =====
-async function translateText(text, sourceLang = 'en', targetLang = 'ko') {
+async function translateText(text, sourceLang = 'en', targetLang = 'ko', retryCount = 0) {
     const cacheKey = `${text}_${sourceLang}_${targetLang}`;
     if (translationCache[cacheKey]) return translationCache[cacheKey];
 
     try {
         const encoded = encodeURIComponent(text.substring(0, 500));
-        const response = await fetch(
-            `https://api.mymemory.translated.net/get?q=${encoded}&langpair=${sourceLang}|${targetLang}`
-        );
+        const url = `https://api.mymemory.translated.net/get?q=${encoded}&langpair=${sourceLang}|${targetLang}`;
+        const response = await fetch(url);
+
+        if (response.status === 429 && retryCount < 2) {
+            console.warn(`Translation rate limited (429). Retrying in 2 seconds... (Attempt ${retryCount + 1})`);
+            await new Promise(r => setTimeout(r, 2000 + (retryCount * 1000)));
+            return translateText(text, sourceLang, targetLang, retryCount + 1);
+        }
+
         const data = await response.json();
 
         if (data.responseStatus === 200 && data.responseData.translatedText) {
@@ -378,15 +384,17 @@ async function translateAllCards() {
     translateAllBtn.textContent = '번역 중...';
 
     const cards = document.querySelectorAll('.news-card');
-    for (let i = 0; i < cards.length; i += 3) {
-        const batch = Array.from(cards).slice(i, i + 3);
+    // Translate summary first as a batch, then titles
+    for (let i = 0; i < cards.length; i += 2) {
+        const batch = Array.from(cards).slice(i, i + 2);
         await Promise.all(batch.map(card => {
             if (!card.querySelector('.translated-text')) {
                 return translateCard(card);
             }
             return Promise.resolve();
         }));
-        if (i + 3 < cards.length) await new Promise(r => setTimeout(r, 300));
+        // Increase delay between batches to respect free API limits
+        if (i + 2 < cards.length) await new Promise(r => setTimeout(r, 800));
     }
 
     translateAllBtn.innerHTML = `
