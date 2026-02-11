@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto News Hub - 실시간 암호화폐 뉴스</title>
+    <meta name="description" content="실시간 비트코인 및 암호화폐 뉴스를 한눈에 확인하세요">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <div class="logo-icon">₿</div>
+                    <h1>Crypto News Hub</h1>
+                </div>
+                <p class="tagline">실시간 암호화폐 시장 뉴스</p>
+            </div>
+            <button id="refreshBtn" class="btn-refresh">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                </svg>
+                새로고침
+            </button>
+        </header>
+
+        <main id="newsContainer" class="news-grid">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>뉴스를 불러오는 중...</p>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>Powered by <a href="https://finnhub.io" target="_blank" rel="noopener">Finnhub</a> API</p>
+            <p class="footer-note">실시간 데이터로 업데이트됩니다</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

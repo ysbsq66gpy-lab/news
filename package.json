@@ -1,17 +1,27 @@
 {
-  "name": "bitcoin-news-fetcher",
-  "version": "1.0.0",
-  "description": "Fetch Bitcoin and crypto news using Finnhub API",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js",
-    "dev": "node index.js"
-  },
-  "keywords": ["bitcoin", "crypto", "news", "finnhub"],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "node-fetch": "^2.7.0",
-    "dotenv": "^16.0.3"
-  }
+    "name": "bitcoin-news-fetcher",
+    "version": "1.0.0",
+    "description": "Fetch Bitcoin and crypto news using Finnhub API",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "node server.js",
+        "cli": "node index.js"
+    },
+    "keywords": [
+        "bitcoin",
+        "crypto",
+        "news",
+        "finnhub",
+        "web",
+        "api"
+    ],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "node-fetch": "^2.7.0",
+        "dotenv": "^16.0.3",
+        "express": "^4.18.2",
+        "cors": "^2.8.5"
+    }
 }
