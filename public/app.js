@@ -294,12 +294,14 @@ async function translateText(text, sourceLang = 'en', targetLang = 'ko', retryCo
 
     try {
         const encoded = encodeURIComponent(text.substring(0, 500));
-        const url = `https://api.mymemory.translated.net/get?q=${encoded}&langpair=${sourceLang}|${targetLang}`;
+        // Added de_email to increase rate limits as per MyMemory docs
+        const url = `https://api.mymemory.translated.net/get?q=${encoded}&langpair=${sourceLang}|${targetLang}&de=jihun@example.com`;
         const response = await fetch(url);
 
-        if (response.status === 429 && retryCount < 2) {
-            console.warn(`Translation rate limited (429). Retrying in 2 seconds... (Attempt ${retryCount + 1})`);
-            await new Promise(r => setTimeout(r, 2000 + (retryCount * 1000)));
+        if (response.status === 429 && retryCount < 3) {
+            const delay = 3000 + (retryCount * 2000);
+            console.warn(`Translation rate limited (429). Retrying in ${delay / 1000} seconds... (Attempt ${retryCount + 1})`);
+            await new Promise(r => setTimeout(r, delay));
             return translateText(text, sourceLang, targetLang, retryCount + 1);
         }
 
@@ -309,6 +311,11 @@ async function translateText(text, sourceLang = 'en', targetLang = 'ko', retryCo
             const translated = data.responseData.translatedText;
             translationCache[cacheKey] = translated;
             return translated;
+        } else if (data.responseStatus === 429 && retryCount < 3) {
+            // Some responses return 429 in the JSON body instead of HTTP status
+            const delay = 3000 + (retryCount * 2000);
+            await new Promise(r => setTimeout(r, delay));
+            return translateText(text, sourceLang, targetLang, retryCount + 1);
         }
         return null;
     } catch (error) {
@@ -384,17 +391,14 @@ async function translateAllCards() {
     translateAllBtn.textContent = '번역 중...';
 
     const cards = document.querySelectorAll('.news-card');
-    // Translate summary first as a batch, then titles
-    for (let i = 0; i < cards.length; i += 2) {
-        const batch = Array.from(cards).slice(i, i + 2);
-        await Promise.all(batch.map(card => {
-            if (!card.querySelector('.translated-text')) {
-                return translateCard(card);
-            }
-            return Promise.resolve();
-        }));
-        // Increase delay between batches to respect free API limits
-        if (i + 2 < cards.length) await new Promise(r => setTimeout(r, 800));
+    // Translate one by one with a significant delay to avoid 429
+    for (let i = 0; i < cards.length; i++) {
+        const card = cards[i];
+        if (!card.querySelector('.translated-text')) {
+            await translateCard(card);
+            // Wait 1.5 seconds between each card (2 requests: title + summary)
+            if (i < cards.length - 1) await new Promise(r => setTimeout(r, 1500));
+        }
     }
 
     translateAllBtn.innerHTML = `
