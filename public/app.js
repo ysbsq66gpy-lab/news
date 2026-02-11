@@ -75,8 +75,19 @@ async function analyzeCardImage(cardEl) {
                     }
                 };
                 classifyImg.onerror = () => {
-                    // If CORS fails, try classifying the original image directly
-                    model.classify(imgEl, 3).then(resolve).catch(reject);
+                    // CORS failed, use server proxy
+                    const proxyImg = new Image();
+                    proxyImg.crossOrigin = 'anonymous';
+                    proxyImg.onload = async () => {
+                        try {
+                            const result = await model.classify(proxyImg, 3);
+                            resolve(result);
+                        } catch (e) {
+                            reject(e);
+                        }
+                    };
+                    proxyImg.onerror = () => reject(new Error('Image load failed'));
+                    proxyImg.src = `${API_BASE_URL}/api/proxy-image?url=${encodeURIComponent(imgSrc)}`;
                 };
                 classifyImg.src = imgSrc;
             });
