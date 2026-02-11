@@ -19,8 +19,5 @@
             "src": "/(.*)",
             "dest": "public/$1"
         }
-    ],
-    "env": {
-        "FINNHUB_API_KEY": "@finnhub_api_key"
-    }
+    ]
 }
