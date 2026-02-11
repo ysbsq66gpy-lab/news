@@ -65,28 +65,6 @@ app.get('/api/news', async (req, res) => {
     }
 });
 
-// Image proxy for AI analysis (bypasses CORS)
-app.get('/api/proxy-image', async (req, res) => {
-    try {
-        const imageUrl = req.query.url;
-        if (!imageUrl) return res.status(400).json({ error: 'Missing url parameter' });
-
-        const response = await axios.get(imageUrl, {
-            responseType: 'arraybuffer',
-            timeout: 10000,
-            headers: { 'User-Agent': 'Mozilla/5.0' }
-        });
-
-        const contentType = response.headers['content-type'] || 'image/jpeg';
-        res.set('Content-Type', contentType);
-        res.set('Cache-Control', 'public, max-age=3600');
-        res.send(Buffer.from(response.data));
-    } catch (error) {
-        console.error('Image proxy error:', error.message);
-        res.status(500).json({ error: 'Failed to proxy image' });
-    }
-});
-
 // Health check endpoint
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
