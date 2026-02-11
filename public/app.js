@@ -1,11 +1,12 @@
 // ===== FIREBASE CONFIGURATION =====
 const firebaseConfig = {
-    apiKey: "AIzaSyD_PLACEHOLDER_REPLACE_ME",
-    authDomain: "crypto-news-hub.firebaseapp.com",
-    projectId: "crypto-news-hub",
-    storageBucket: "crypto-news-hub.appspot.com",
-    messagingSenderId: "000000000000",
-    appId: "1:000000000000:web:placeholder"
+    apiKey: "AIzaSyBiH3RTqyi0WTDpO34mWroTO9E_Kl0DnMI",
+    authDomain: "login-6871e.firebaseapp.com",
+    projectId: "login-6871e",
+    storageBucket: "login-6871e.firebasestorage.app",
+    messagingSenderId: "296005361292",
+    appId: "1:296005361292:web:da445604d63c54c693a5a9",
+    measurementId: "G-9Q9DD0QM2Y"
 };
 
 // Initialize Firebase
