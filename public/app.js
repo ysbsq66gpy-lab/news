@@ -384,14 +384,15 @@ function createNewsCard(article, index) {
     card.className = 'news-card';
     card.style.animationDelay = `${index * 0.1}s`;
 
-    const imageUrl = article.image || 'https://via.placeholder.com/400x200/1a1f3f/f7931a?text=Crypto+News';
+    const PLACEHOLDER = 'https://placehold.co/400x200/1a1f3f/f7931a?text=Crypto+News';
+    const imageUrl = article.image || PLACEHOLDER;
     const date = new Date(article.datetime * 1000);
     const formattedDate = formatDate(date);
 
     card.innerHTML = `
         <div class="news-image-wrapper">
-            <img src="${imageUrl}" alt="${escapeHtml(article.headline)}" class="news-image" crossorigin="anonymous"
-                 onerror="this.src='https://via.placeholder.com/400x200/1a1f3f/f7931a?text=Crypto+News'">
+            <img src="${imageUrl}" alt="${escapeHtml(article.headline)}" class="news-image"
+                 onerror="this.onerror=null;this.src='${PLACEHOLDER}'">
         </div>
         <div class="news-content">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; gap:0.4rem;">
